@@ -1,5 +1,5 @@
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GENERATE_MODEL = "gemini-flash-latest";
+const GENERATE_MODEL = "gemini-2.5-flash";
 const EMBEDDING_MODEL = "gemini-embedding-2";
 
 async function callGemini(path, body) {
@@ -7,9 +7,12 @@ async function callGemini(path, body) {
     throw new Error("Missing VITE_GEMINI_API_KEY. Add it to .env before using AI features.");
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${path}?key=${GEMINI_KEY}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${GEMINI_KEY}`,
+    },
     body: JSON.stringify(body),
   });
 
@@ -22,23 +25,22 @@ async function callGemini(path, body) {
 }
 
 export async function generateEmbedding(text) {
-  const data = await callGemini(`models/${EMBEDDING_MODEL}:embedContent`, {
-    model: `models/${EMBEDDING_MODEL}`,
-    content: { parts: [{ text: text.slice(0, 12_000) }] },
+  const data = await callGemini(`embeddings`, {
+    model: EMBEDDING_MODEL,
+    input: text.slice(0, 12000),
   });
-  return data.embedding?.values || [];
+  return data.data?.[0]?.embedding || [];
 }
 
 export async function generateText(prompt) {
-  const data = await callGemini(`models/${GENERATE_MODEL}:generateContent`, {
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.35,
-      topP: 0.9,
-      maxOutputTokens: 1400,
-    },
+  const data = await callGemini(`chat/completions`, {
+    model: GENERATE_MODEL,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.35,
+    top_p: 0.9,
+    max_tokens: 1400,
   });
-  return data.candidates?.[0]?.content?.parts?.map((part) => part.text).join("\n").trim() || "";
+  return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
 export async function summarizeContent({ title, content, type }) {
@@ -47,7 +49,7 @@ export async function summarizeContent({ title, content, type }) {
 Title: ${title}
 
 Content:
-${content.slice(0, 18_000)}
+${content.slice(0, 18000)}
 
 Return 4 concise bullets and one useful tag list.`);
 }
@@ -70,13 +72,13 @@ Include a short answer, useful details, and cite source numbers inline.`);
 export async function generateFlashcards(content) {
   const text = await generateText(`Create 8 concise flashcards from this content. Format as JSON array with "front" and "back" keys only.
 
-${content.slice(0, 12_000)}`);
+${content.slice(0, 12000)}`);
   return text;
 }
 
 export async function generateQuiz(content) {
   const text = await generateText(`Create 5 multiple-choice questions from this content. Format as JSON array with question, options, and answer.
 
-${content.slice(0, 12_000)}`);
+${content.slice(0, 12000)}`);
   return text;
 }
