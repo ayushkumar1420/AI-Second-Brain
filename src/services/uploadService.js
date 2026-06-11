@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { db, storage } from "../firebase/config";
 import { generateEmbedding, summarizeContent } from "./gemini";
@@ -35,20 +35,40 @@ export function uploadFile(userId, file, onProgress) {
 
 export async function saveDocument(userId, file, onProgress) {
   const [fileUrl, extractedText] = await Promise.all([uploadFile(userId, file, onProgress), extractPdfText(file)]);
-  const [summary, embedding] = await Promise.all([
-    summarizeContent({ title: file.name, content: extractedText, type: "PDF" }),
-    generateEmbedding(`${file.name}\n${extractedText}`),
-  ]);
   const document = await addDoc(collection(db, "documents"), {
     userId,
     fileName: file.name,
     fileUrl,
     extractedText,
-    summary,
-    embedding,
+    summary: "Processing AI summary...",
+    embedding: [],
+    aiStatus: "processing",
     uploadedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
+  enrichDocument(document.id, file.name, extractedText).catch(() => {});
   await logActivity(userId, "Uploaded document", file.name);
   return document.id;
+}
+
+async function enrichDocument(documentId, fileName, extractedText) {
+  try {
+    const [summary, embedding] = await Promise.all([
+      summarizeContent({ title: fileName, content: extractedText, type: "PDF" }),
+      generateEmbedding(`${fileName}\n${extractedText}`),
+    ]);
+    await updateDoc(doc(db, "documents", documentId), {
+      summary,
+      embedding,
+      aiStatus: "ready",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    await updateDoc(doc(db, "documents", documentId), {
+      summary: extractedText.slice(0, 600) || "AI summary is not available yet.",
+      aiStatus: "failed",
+      aiError: error.message,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }

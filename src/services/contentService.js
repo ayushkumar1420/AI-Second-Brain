@@ -47,22 +47,20 @@ export async function listAllKnowledge(userId) {
 
 export async function saveNote(userId, payload) {
   const plain = toPlainText(payload.content);
-  const [summary, embedding] = await Promise.all([
-    summarizeContent({ title: payload.title, content: plain, type: "note" }),
-    generateEmbedding(`${payload.title}\n${plain}`),
-  ]);
   const document = await addDoc(collection(db, "notes"), {
     userId,
     title: payload.title,
     content: payload.content,
-    summary,
+    summary: "Processing AI summary...",
     tags: payload.tags,
     category: payload.category,
-    embedding,
+    embedding: [],
+    aiStatus: "processing",
     history: [{ content: payload.content, savedAt: new Date().toISOString() }],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  enrichNote(document.id, payload.title, plain).catch(() => {});
   await logActivity(userId, "Created note", payload.title);
   return document.id;
 }
@@ -103,4 +101,26 @@ export async function createLink(userId, payload) {
   });
   await logActivity(userId, "Saved link", payload.url);
   return document.id;
+}
+
+async function enrichNote(noteId, title, plain) {
+  try {
+    const [summary, embedding] = await Promise.all([
+      summarizeContent({ title, content: plain, type: "note" }),
+      generateEmbedding(`${title}\n${plain}`),
+    ]);
+    await updateDoc(doc(db, "notes", noteId), {
+      summary,
+      embedding,
+      aiStatus: "ready",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    await updateDoc(doc(db, "notes", noteId), {
+      summary: plain.slice(0, 600) || "AI summary is not available yet.",
+      aiStatus: "failed",
+      aiError: error.message,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }
