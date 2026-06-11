@@ -20,9 +20,12 @@ export default function UploadPage() {
       queryClient.invalidateQueries({ queryKey: ["document", user.uid] });
       queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
       setProgress(0);
-      toast.success("PDF uploaded, extracted, and summarized.");
+      toast.success("PDF saved. Text extraction and AI processing are running.");
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      setProgress(0);
+      toast.error(error.message);
+    },
   });
 
   return (
@@ -31,8 +34,18 @@ export default function UploadPage() {
       <label className="mb-6 grid cursor-pointer place-items-center rounded-lg border-2 border-dashed border-stone-300 bg-white p-10 text-center transition hover:border-fern dark:border-zinc-800 dark:bg-zinc-900">
         <UploadCloud className="mb-3 h-10 w-10 text-fern" />
         <span className="font-bold text-ink dark:text-white">Upload PDF</span>
-        <span className="mt-1 text-sm text-stone-500">Text extraction, storage upload, summary, and embedding run after selection.</span>
-        <input type="file" accept="application/pdf" className="hidden" onChange={(event) => event.target.files?.[0] && mutation.mutate(event.target.files[0])} />
+        <span className="mt-1 text-sm text-stone-500">The file is saved first. Text extraction, summary, and embedding continue after upload.</span>
+        <input
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          disabled={mutation.isPending}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) mutation.mutate(file);
+            event.target.value = "";
+          }}
+        />
         {mutation.isPending && <div className="mt-4 h-2 w-full max-w-md rounded-full bg-stone-100"><div className="h-2 rounded-full bg-fern" style={{ width: `${progress}%` }} /></div>}
       </label>
       {data.length ? (

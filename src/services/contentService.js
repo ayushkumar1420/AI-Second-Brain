@@ -5,7 +5,6 @@ import {
   doc,
   getDocs,
   limit,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -26,10 +25,37 @@ function normalizeDoc(snapshot, type) {
   return { id: snapshot.id, type, ...snapshot.data() };
 }
 
-export async function listContent(userId, type, take = 40) {
-  const q = query(collection(db, collections[type]), where("userId", "==", userId), orderBy("createdAt", "desc"), limit(take));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((item) => normalizeDoc(item, type));
+function timestampToMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (value.seconds) return value.seconds * 1000;
+  return new Date(value).getTime() || 0;
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((a, b) => timestampToMs(b.createdAt || b.uploadedAt || b.updatedAt) - timestampToMs(a.createdAt || a.uploadedAt || a.updatedAt));
+}
+
+function formatFirestoreError(error, type) {
+  const code = error?.code || "";
+  if (code.includes("permission-denied")) return `Firestore denied loading ${type}s. Check firestore.rules and the signed-in user ID.`;
+  if (code.includes("failed-precondition")) return `Firestore needs an index or query change before loading ${type}s.`;
+  if (code.includes("unauthenticated")) return `You must be signed in before loading ${type}s.`;
+  return error?.message || `Could not load ${type}s from Firestore.`;
+}
+
+export async function listContent(userId, type, take = 80) {
+  const startedAt = performance.now();
+  try {
+    const q = query(collection(db, collections[type]), where("userId", "==", userId), limit(take));
+    const snapshot = await getDocs(q);
+    const items = sortNewestFirst(snapshot.docs.map((item) => normalizeDoc(item, type)));
+    console.info(`[SecondBrain] Loaded ${items.length} ${type}s in ${Math.round(performance.now() - startedAt)}ms`);
+    return items;
+  } catch (error) {
+    console.error(`[SecondBrain] Failed to load ${type}s`, error);
+    throw new Error(formatFirestoreError(error, type));
+  }
 }
 
 export async function listAllKnowledge(userId) {
