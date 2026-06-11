@@ -47,7 +47,7 @@ export default function LandingPage() {
         </motion.div>
         <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-zinc-800 dark:bg-zinc-900">
           <div className="rounded-md bg-stone-100 p-4 dark:bg-zinc-950">
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-3">
               <span className="h-3 w-3 rounded-full bg-coral" />
               <span className="h-3 w-3 rounded-full bg-gold" />
               <span className="h-3 w-3 rounded-full bg-fern" />
@@ -59,11 +59,11 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-md bg-white p-4 dark:bg-zinc-900">
-                  <p className="text-2xl font-bold">128</p>
+                  <p className="text-2xl font-bold">5</p>
                   <p className="text-sm text-stone-500">Knowledge items</p>
                 </div>
                 <div className="rounded-md bg-white p-4 dark:bg-zinc-900">
-                  <p className="text-2xl font-bold">42</p>
+                  <p className="text-2xl font-bold">2</p>
                   <p className="text-sm text-stone-500">AI summaries</p>
                 </div>
               </div>
