@@ -35,7 +35,7 @@ export default function SearchPage() {
       <div className="mb-6 flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row">
         <Input label="Search your knowledge" value={query} onChange={(event) => { setQuery(event.target.value); setSemantic([]); }} placeholder="How does user login work?" />
         <Button className="self-end" loading={loading} disabled={!query.trim()} onClick={runSemanticSearch}>
-          <Search className="h-4 w-4" /> Semantic search
+          <Search className="h-4 w-4" /> Search uploads
         </Button>
       </div>
       {results.length ? (
