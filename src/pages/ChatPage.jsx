@@ -54,12 +54,14 @@ export default function ChatPage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-3 item-end">
-              <Textarea className="flex-1 min-h-4 w-10" 
-              value={question} 
-              onChange={(event) => setQuestion(event.target.value)} 
-              placeholder="Ask about anything you saved..." />
-              <Button className="h-12 w-12" 
+            <div className="flex w-full items-end gap-3">
+              <div className="flex-1">
+                <Textarea className="min-h-[48px]" 
+                value={question} 
+                onChange={(event) => setQuestion(event.target.value)} 
+                placeholder="Ask about anything you saved..." />
+              </div>
+              <Button className="h-12 w-12 shrink-0" 
               loading={mutation.isPending} 
               onClick={() => ask()}>
                 <Send className="h-4 w-4" />
