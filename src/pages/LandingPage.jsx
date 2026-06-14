@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Brain, FileText, MessageSquare, Search, Shield } from "lucide-react";
 import Button from "../components/Button";
 
@@ -30,7 +29,7 @@ export default function LandingPage() {
         </div>
       </header>
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:py-20">
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <div>
           <p className="mb-4 inline-flex rounded-md bg-gold/20 px-3 py-1 text-sm font-semibold text-yellow-800">AI knowledge management</p>
           <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">Second Brain</h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-600 dark:text-zinc-300">
@@ -44,7 +43,7 @@ export default function LandingPage() {
               <Button variant="secondary" className="min-w-32">Open app</Button>
             </Link>
           </div>
-        </motion.div>
+        </div>
         <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-zinc-800 dark:bg-zinc-900">
           <div className="rounded-md bg-stone-100 p-4 dark:bg-zinc-950">
             <div className="mb-4 flex items-center gap-3">

@@ -11,7 +11,8 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { deleteObject, ref } from "firebase/storage";
+import { db, storage } from "../firebase/config";
 import { generateEmbedding, summarizeContent } from "./gemini";
 import { logActivity } from "./activityService";
 import { toPlainText } from "../utils/vector";
@@ -46,15 +47,11 @@ function formatFirestoreError(error, type) {
 }
 
 export async function listContent(userId, type, take = 80) {
-  const startedAt = performance.now();
   try {
     const q = query(collection(db, collections[type]), where("userId", "==", userId), limit(take));
     const snapshot = await getDocs(q);
-    const items = sortNewestFirst(snapshot.docs.map((item) => normalizeDoc(item, type)));
-    console.info(`[SecondBrain] Loaded ${items.length} ${type}s in ${Math.round(performance.now() - startedAt)}ms`);
-    return items;
+    return sortNewestFirst(snapshot.docs.map((item) => normalizeDoc(item, type)));
   } catch (error) {
-    console.error(`[SecondBrain] Failed to load ${type}s`, error);
     throw new Error(formatFirestoreError(error, type));
   }
 }
@@ -119,7 +116,15 @@ export async function deleteContent(type, id) {
     const documentRef = doc(db, collections[type], id);
     const snapshot = await getDoc(documentRef);
     await deleteDoc(documentRef);
-    return snapshot.data();
+    const fileUrl = snapshot.data()?.fileUrl;
+    if (fileUrl) {
+      try {
+        await deleteObject(ref(storage, fileUrl));
+      } catch {
+        // Firestore is the source of truth; ignore stale or already-deleted Storage objects.
+      }
+    }
+    return;
   }
   await deleteDoc(doc(db, collections[type], id));
 }

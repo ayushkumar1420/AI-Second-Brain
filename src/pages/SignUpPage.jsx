@@ -20,6 +20,15 @@ export default function SignUpPage() {
     }
   }
 
+  async function onGoogleLogin() {
+    try {
+      await loginWithGoogle();
+      navigate("/app");
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
   return (
     <AuthShell title="Create your account" subtitle="Start building a searchable, chat-ready library.">
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -28,7 +37,7 @@ export default function SignUpPage() {
         <Input label="Password" type="password" autoComplete="new-password" {...register("password", { required: true, minLength: 8 })} />
         <Button className="w-full" loading={formState.isSubmitting}>Sign up</Button>
       </form>
-      <Button variant="secondary" className="mt-5 w-full" onClick={loginWithGoogle}>Continue with Google</Button>
+      <Button variant="secondary" className="mt-5 w-full" onClick={onGoogleLogin}>Continue with Google</Button>
       <p className="mt-4 text-center text-sm text-stone-500">
         Already have an account? <Link className="font-semibold text-fern" to="/login">Log in</Link>
       </p>

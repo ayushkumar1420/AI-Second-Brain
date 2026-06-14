@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { FilePlus2, UploadCloud } from "lucide-react";
 import EmptyState from "../components/EmptyState";
+import KnowledgeSkeleton from "../components/KnowledgeSkeleton";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
@@ -76,7 +77,7 @@ export default function UploadPage() {
       )}
       {isRefreshing && <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-400">Syncing latest uploads...</div>}
       {isInitialLoading ? (
-        <UploadSkeleton />
+        <KnowledgeSkeleton />
       ) : data.length ? (
         <KnowledgeGrid data={data} />
       ) : isError ? (
@@ -85,27 +86,5 @@ export default function UploadPage() {
         <EmptyState icon={FilePlus2} title="No documents yet" body="Upload a PDF to extract text and make it available to semantic search and chat." />
       )}
     </>
-  );
-}
-
-function UploadSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="animate-pulse rounded-lg border border-stone-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-md bg-stone-200 dark:bg-zinc-800" />
-            <div className="min-w-0 flex-1">
-              <div className="h-4 w-2/3 rounded bg-stone-200 dark:bg-zinc-800" />
-              <div className="mt-2 h-3 w-20 rounded bg-stone-100 dark:bg-zinc-800" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-3 rounded bg-stone-100 dark:bg-zinc-800" />
-            <div className="h-3 w-4/5 rounded bg-stone-100 dark:bg-zinc-800" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

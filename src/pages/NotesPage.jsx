@@ -5,6 +5,7 @@ import { FileUp, Plus, StickyNote } from "lucide-react";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
 import KnowledgeGrid from "../components/KnowledgeGrid";
+import KnowledgeSkeleton from "../components/KnowledgeSkeleton";
 import NoteForm from "../components/NoteForm";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
@@ -115,7 +116,7 @@ export default function NotesPage() {
       )}
       {isRefreshing && <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-400">Syncing latest changes...</div>}
       {isInitialLoading ? (
-        <NotesSkeleton />
+        <KnowledgeSkeleton count={6} />
       ) : data.length ? (
         <KnowledgeGrid data={data} />
       ) : hasLoadError ? (
@@ -133,27 +134,4 @@ function getTime(item) {
   if (typeof value.toMillis === "function") return value.toMillis();
   if (value.seconds) return value.seconds * 1000;
   return new Date(value).getTime() || 0;
-}
-
-function NotesSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="animate-pulse rounded-lg border border-stone-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-md bg-stone-200 dark:bg-zinc-800" />
-            <div className="min-w-0 flex-1">
-              <div className="h-4 w-2/3 rounded bg-stone-200 dark:bg-zinc-800" />
-              <div className="mt-2 h-3 w-20 rounded bg-stone-100 dark:bg-zinc-800" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-3 rounded bg-stone-100 dark:bg-zinc-800" />
-            <div className="h-3 rounded bg-stone-100 dark:bg-zinc-800" />
-            <div className="h-3 w-3/4 rounded bg-stone-100 dark:bg-zinc-800" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }

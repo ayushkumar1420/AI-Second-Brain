@@ -24,8 +24,21 @@ export default function LoginPage() {
   async function onReset() {
     const email = watch("email");
     if (!email) return toast.error("Enter your email first.");
-    await resetPassword(email);
-    toast.success("Password reset email sent.");
+    try {
+      await resetPassword(email);
+      toast.success("Password reset email sent.");
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  async function onGoogleLogin() {
+    try {
+      await loginWithGoogle();
+      navigate("/app");
+    } catch (error) {
+      toast.error(error.message);
+    }
   }
 
   return (
@@ -39,7 +52,7 @@ export default function LoginPage() {
         <button className="font-semibold text-fern" onClick={onReset}>Reset password</button>
         <Link className="font-semibold text-fern" to="/signup">Create account</Link>
       </div>
-      <Button variant="secondary" className="mt-5 w-full" onClick={loginWithGoogle}>Continue with Google</Button>
+      <Button variant="secondary" className="mt-5 w-full" onClick={onGoogleLogin}>Continue with Google</Button>
     </AuthShell>
   );
 }

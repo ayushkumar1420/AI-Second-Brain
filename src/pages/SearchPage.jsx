@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { Search } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import { Input } from "../components/Input";
@@ -22,9 +23,14 @@ export default function SearchPage() {
 
   async function runSemanticSearch() {
     setLoading(true);
-    const embedding = await generateEmbedding(query);
-    setSemantic(rankByEmbedding(data, embedding, 10));
-    setLoading(false);
+    try {
+      const embedding = await generateEmbedding(query);
+      setSemantic(rankByEmbedding(data, embedding, 10));
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const results = semantic.length ? semantic : keywordResults;
