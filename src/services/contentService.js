@@ -105,6 +105,19 @@ export async function updateNote(noteId, payload) {
   });
 }
 
+export async function updateDocument(documentId, payload, extractedText) {
+  const [summary, embedding] = await Promise.all([
+    summarizeContent({ title: payload.fileName, content: extractedText, type: "PDF" }),
+    generateEmbedding(`${payload.fileName}\n${extractedText}`),
+  ]);
+  await updateDoc(doc(db, "documents", documentId), {
+    ...payload,
+    summary,
+    embedding,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteContent(type, id) {
   await deleteDoc(doc(db, collections[type], id));
 }

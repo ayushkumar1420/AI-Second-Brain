@@ -9,11 +9,12 @@ import { Input, Textarea } from "../components/Input";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
-import { deleteContent, saveNote } from "../services/contentService";
+import { deleteContent, saveNote, updateNote, updateDocument } from "../services/contentService";
 import { saveDocument } from "../services/uploadService";
 
 export default function NotesPage() {
   const [open, setOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [progress, setProgress] = useState(0);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -101,6 +102,39 @@ export default function NotesPage() {
       toast.error(error.message);
     },
   });
+  
+  const updateMutation = useMutation({
+    mutationFn: (payload) => {
+      if (editingItem.type === "note") {
+        return updateNote(editingItem.id, payload);
+      } else if (editingItem.type === "document") {
+        return updateDocument(editingItem.id, payload, editingItem.extractedText);
+      }
+    },
+    onMutate: async (payload) => {
+      const type = editingItem.type;
+      await queryClient.cancelQueries({ queryKey: [type, user.uid] });
+      const previousItems = queryClient.getQueryData([type, user.uid]);
+      queryClient.setQueryData([type, user.uid], (current = []) =>
+        current.map((item) =>
+          item.id === editingItem.id
+            ? { ...item, ...payload, title: payload.title || payload.fileName, summary: "Updating AI summary..." }
+            : item
+        )
+      );
+      setEditingItem(null);
+      return { previousItems, type };
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: [context.type, user.uid] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
+      toast.success("Updated successfully. AI enrichment is running.");
+    },
+    onError: (error, variables, context) => {
+      queryClient.setQueryData([context.type, user.uid], context?.previousItems || []);
+      toast.error(error.message);
+    },
+  });
   const isInitialLoading = (notesLoading || documentsLoading) && !data.length;
   const hasLoadError = notesError || documentsError;
   const isRefreshing = (notesFetching || documentsFetching) && data.length;
@@ -126,6 +160,7 @@ export default function NotesPage() {
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> New note</Button>
       </PageHeader>
       {open && <NoteForm loading={createMutation.isPending} onCancel={() => setOpen(false)} onSubmit={(payload) => createMutation.mutate(payload)} />}
+      {editingItem && <NoteForm initialData={editingItem} loading={updateMutation.isPending} onCancel={() => setEditingItem(null)} onSubmit={(payload) => updateMutation.mutate(payload)} />}
       {hasLoadError && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {notesLoadError?.message || documentsLoadError?.message || "Could not load notes from the database."}
@@ -136,7 +171,7 @@ export default function NotesPage() {
         <NotesSkeleton />
       ) : data.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((note) => <KnowledgeCard key={`${note.type}-${note.id}`} item={note} onDelete={(item) => deleteMutation.mutate(item)} />)}
+          {data.map((note) => <KnowledgeCard key={`${note.type}-${note.id}`} item={note} onEdit={(item) => setEditingItem(item)} onDelete={(item) => deleteMutation.mutate(item)} />)}
         </div>
       ) : hasLoadError ? (
         <EmptyState icon={StickyNote} title="Could not load your notes" body="The database request failed. Check the error message above, then refresh after fixing Firebase rules or indexes." />
@@ -178,25 +213,42 @@ function NotesSkeleton() {
   );
 }
 
-function NoteForm({ onSubmit, onCancel, loading }) {
-  const [payload, setPayload] = useState({ title: "", category: "", tags: "", content: "" });
+function NoteForm({ initialData, onSubmit, onCancel, loading }) {
+  const isDocument = initialData?.type === "document";
+  const defaultTitle = initialData ? (initialData.title || initialData.fileName) : "";
+  const defaultTags = initialData?.tags ? initialData.tags.join(", ") : "";
+
+  const [payload, setPayload] = useState({ 
+    title: defaultTitle, 
+    category: initialData?.category || "", 
+    tags: defaultTags, 
+    content: initialData?.content || "" 
+  });
+
   return (
     <form
       className="mb-6 rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit({ ...payload, tags: payload.tags.split(",").map((tag) => tag.trim()).filter(Boolean) });
+        const submittedTags = payload.tags.split(",").map((tag) => tag.trim()).filter(Boolean);
+        if (isDocument) {
+          onSubmit({ fileName: payload.title, category: payload.category, tags: submittedTags });
+        } else {
+          onSubmit({ ...payload, tags: submittedTags });
+        }
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Title" value={payload.title} onChange={(event) => setPayload({ ...payload, title: event.target.value })} required />
+        <Input label={isDocument ? "File Name" : "Title"} value={payload.title} onChange={(event) => setPayload({ ...payload, title: event.target.value })} required />
         <Input label="Category" value={payload.category} onChange={(event) => setPayload({ ...payload, category: event.target.value })} />
       </div>
       <Input className="mt-4" label="Tags" placeholder="firebase, auth, product" value={payload.tags} onChange={(event) => setPayload({ ...payload, tags: event.target.value })} />
-      <Textarea className="mt-4 min-h-52" label="Content" value={payload.content} onChange={(event) => setPayload({ ...payload, content: event.target.value })} required />
+      {!isDocument && (
+        <Textarea className="mt-4 min-h-52" label="Content" value={payload.content} onChange={(event) => setPayload({ ...payload, content: event.target.value })} required />
+      )}
       <div className="mt-4 flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button loading={loading}>Save and summarize</Button>
+        <Button loading={loading}>{initialData ? "Save changes" : "Save and summarize"}</Button>
       </div>
     </form>
   );
