@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { Link as LinkIcon, Plus } from "lucide-react";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import KnowledgeCard from "../components/KnowledgeCard";
+import ManagedKnowledgeCard from "../components/ManagedKnowledgeCard";
 import { Input, Textarea } from "../components/Input";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
@@ -42,7 +42,7 @@ export default function LinksPage() {
         </div>
       </form>
       {data.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((item) => <KnowledgeCard key={item.id} item={item} />)}</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((item) => <ManagedKnowledgeCard key={item.id} item={item} />)}</div>
       ) : (
         <EmptyState icon={LinkIcon} title="No links yet" body="Add an article, docs page, or useful reference and Gemini will summarize it." />
       )}

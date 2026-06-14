@@ -19,7 +19,6 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <Input label="Name" value={user?.displayName || ""} readOnly />
           <Input label="Email" value={user?.email || ""} readOnly />
-          <Input label="User ID" value={user?.uid || ""} readOnly />
         </div>
       </div>
     </>

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import { Input } from "../components/Input";
-import KnowledgeCard from "../components/KnowledgeCard";
+import ManagedKnowledgeCard from "../components/ManagedKnowledgeCard";
 import EmptyState from "../components/EmptyState";
 import Button from "../components/Button";
 import { useKnowledge } from "../hooks/useKnowledge";
@@ -39,7 +39,7 @@ export default function SearchPage() {
         </Button>
       </div>
       {results.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.map((item) => <KnowledgeCard key={`${item.type}-${item.id}`} item={item} />)}</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.map((item) => <ManagedKnowledgeCard key={`${item.type}-${item.id}`} item={item} />)}</div>
       ) : (
         <EmptyState icon={Search} title="No matching knowledge" body="Try a broader phrase or add more notes, PDFs, and links." />
       )}

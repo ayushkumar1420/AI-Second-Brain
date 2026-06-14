@@ -4,17 +4,16 @@ import toast from "react-hot-toast";
 import { FileUp, Plus, StickyNote } from "lucide-react";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import KnowledgeCard from "../components/KnowledgeCard";
+import ManagedKnowledgeCard from "../components/ManagedKnowledgeCard";
 import NoteForm from "../components/NoteForm";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
-import { deleteContent, saveNote, updateNote, updateDocument } from "../services/contentService";
+import { saveNote } from "../services/contentService";
 import { saveDocument } from "../services/uploadService";
 
 export default function NotesPage() {
   const [open, setOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
   const [progress, setProgress] = useState(0);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -82,58 +81,6 @@ export default function NotesPage() {
       toast.error(error.message);
     },
   });
-  const deleteMutation = useMutation({
-    mutationFn: (item) => deleteContent(item.type, item.id),
-    onMutate: async (item) => {
-      await queryClient.cancelQueries({ queryKey: [item.type, user.uid] });
-      const key = [item.type, user.uid];
-      const previousItems = queryClient.getQueryData(key);
-      queryClient.setQueryData(key, (current = []) => current.filter((entry) => entry.id !== item.id));
-      return { key, previousItems };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["note", user.uid] });
-      queryClient.invalidateQueries({ queryKey: ["document", user.uid] });
-      queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
-    },
-    onError: (error, item, context) => {
-      void item;
-      if (context?.key) queryClient.setQueryData(context.key, context.previousItems || []);
-      toast.error(error.message);
-    },
-  });
-  
-  const updateMutation = useMutation({
-    mutationFn: ({ id, type, originalText, payload }) => {
-      if (type === "note") {
-        return updateNote(id, payload);
-      } else if (type === "document") {
-        return updateDocument(id, payload, originalText);
-      }
-    },
-    onMutate: async ({ type, id, payload }) => {
-      await queryClient.cancelQueries({ queryKey: [type, user.uid] });
-      const previousItems = queryClient.getQueryData([type, user.uid]);
-      queryClient.setQueryData([type, user.uid], (current = []) =>
-        current.map((item) =>
-          item.id === id
-            ? { ...item, ...payload, title: payload.title || payload.fileName, summary: "Updating AI summary..." }
-            : item
-        )
-      );
-      setEditingItem(null);
-      return { previousItems, type };
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: [context.type, user.uid] });
-      queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
-      toast.success("Updated successfully. AI enrichment is running.");
-    },
-    onError: (error, variables, context) => {
-      queryClient.setQueryData([context.type, user.uid], context?.previousItems || []);
-      toast.error(error.message);
-    },
-  });
   const isInitialLoading = (notesLoading || documentsLoading) && !data.length;
   const hasLoadError = notesError || documentsError;
   const isRefreshing = (notesFetching || documentsFetching) && data.length;
@@ -159,7 +106,6 @@ export default function NotesPage() {
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> New note</Button>
       </PageHeader>
       {open && <NoteForm loading={createMutation.isPending} onCancel={() => setOpen(false)} onSubmit={(payload) => createMutation.mutate(payload)} />}
-      {editingItem && <NoteForm key={editingItem.id} initialData={editingItem} loading={updateMutation.isPending} onCancel={() => setEditingItem(null)} onSubmit={(payload) => updateMutation.mutate({ id: editingItem.id, type: editingItem.type, originalText: editingItem.extractedText, payload })} />}
       {hasLoadError && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {notesLoadError?.message || documentsLoadError?.message || "Could not load notes from the database."}
@@ -170,7 +116,7 @@ export default function NotesPage() {
         <NotesSkeleton />
       ) : data.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((note) => <KnowledgeCard key={`${note.type}-${note.id}`} item={note} onEdit={(item) => setEditingItem(item)} onDelete={(item) => deleteMutation.mutate(item)} />)}
+          {data.map((note) => <ManagedKnowledgeCard key={`${note.type}-${note.id}`} item={note} />)}
         </div>
       ) : hasLoadError ? (
         <EmptyState icon={StickyNote} title="Could not load your notes" body="The database request failed. Check the error message above, then refresh after fixing Firebase rules or indexes." />

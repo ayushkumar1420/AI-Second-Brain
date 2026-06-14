@@ -56,16 +56,16 @@ export default function AppLayout() {
               <Brain className="h-6 w-6 text-fern" />
               Second Brain
             </button>
-            <div className="hidden text-sm text-stone-500 dark:text-zinc-400 sm:block">{user?.email}</div>
+            <div className="hidden text-sm text-stone-500 dark:text-zinc-400 sm:block">{user?.displayName || "Second Brain User"}</div>
             <div className="flex items-center gap-2">
               <Button variant="secondary" className="h-10 w-10 px-0" onClick={toggleTheme} title="Toggle theme">
-                {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
               </Button>
               <Button variant="secondary" className="h-10 w-10 px-0" onClick={() => navigate("/app/profile")} title="Profile">
-                <User className="h-4 w-4" />
+                <User className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" className="h-10 w-10 px-0" onClick={logout} title="Log out">
-                <LogOut className="h-4 w-4" />
+              <Button variant="ghost" className="h-10 w-10 px-0 text-stone-600 dark:text-zinc-300" onClick={logout} title="Log out">
+                <LogOut className="h-5 w-5" />
               </Button>
             </div>
           </div>

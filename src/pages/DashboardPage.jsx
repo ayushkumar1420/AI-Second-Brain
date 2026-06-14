@@ -2,7 +2,7 @@ import { FileText, Link as LinkIcon, MessageSquare, Search, StickyNote } from "l
 import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
-import KnowledgeCard from "../components/KnowledgeCard";
+import ManagedKnowledgeCard from "../components/ManagedKnowledgeCard";
 import Button from "../components/Button";
 import { useKnowledge } from "../hooks/useKnowledge";
 
@@ -32,7 +32,7 @@ export default function DashboardPage() {
           <div className="rounded-lg border border-stone-200 bg-white p-6 text-sm text-stone-500 dark:border-zinc-800 dark:bg-zinc-900">Loading knowledge...</div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {data.slice(0, 6).map((item) => <KnowledgeCard key={`${item.type}-${item.id}`} item={item} />)}
+            {data.slice(0, 6).map((item) => <ManagedKnowledgeCard key={`${item.type}-${item.id}`} item={item} />)}
           </div>
         )}
       </section>
