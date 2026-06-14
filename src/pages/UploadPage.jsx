@@ -8,9 +8,12 @@ import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
 import { saveDocument } from "../services/uploadService";
+import { deleteContent, updateDocument } from "../services/contentService";
+import NoteForm from "../components/NoteForm";
 
 export default function UploadPage() {
   const [progress, setProgress] = useState(0);
+  const [editingItem, setEditingItem] = useState(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data = [] } = useContent("document");
@@ -24,6 +27,51 @@ export default function UploadPage() {
     },
     onError: (error) => {
       setProgress(0);
+      toast.error(error.message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (item) => deleteContent(item.type, item.id),
+    onMutate: async (item) => {
+      await queryClient.cancelQueries({ queryKey: [item.type, user.uid] });
+      const key = [item.type, user.uid];
+      const previousItems = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (current = []) => current.filter((entry) => entry.id !== item.id));
+      return { key, previousItems };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document", user.uid] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
+    },
+    onError: (error, item, context) => {
+      if (context?.key) queryClient.setQueryData(context.key, context.previousItems || []);
+      toast.error(error.message);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload, originalText }) => updateDocument(id, payload, originalText),
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: ["document", user.uid] });
+      const previousItems = queryClient.getQueryData(["document", user.uid]);
+      queryClient.setQueryData(["document", user.uid], (current = []) =>
+        current.map((item) =>
+          item.id === id
+            ? { ...item, ...payload, fileName: payload.fileName, summary: "Updating AI summary..." }
+            : item
+        )
+      );
+      setEditingItem(null);
+      return { previousItems };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document", user.uid] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge", user.uid] });
+      toast.success("Updated successfully. AI enrichment is running.");
+    },
+    onError: (error, variables, context) => {
+      queryClient.setQueryData(["document", user.uid], context?.previousItems || []);
       toast.error(error.message);
     },
   });
@@ -48,8 +96,9 @@ export default function UploadPage() {
         />
         {mutation.isPending && <div className="mt-4 h-2 w-full max-w-md rounded-full bg-stone-100"><div className="h-2 rounded-full bg-fern" style={{ width: `${progress}%` }} /></div>}
       </label>
+      {editingItem && <NoteForm key={editingItem.id} initialData={editingItem} loading={updateMutation.isPending} onCancel={() => setEditingItem(null)} onSubmit={(payload) => updateMutation.mutate({ id: editingItem.id, payload, originalText: editingItem.extractedText })} />}
       {data.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((item) => <KnowledgeCard key={item.id} item={item} />)}</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map((item) => <KnowledgeCard key={item.id} item={item} onEdit={(item) => setEditingItem(item)} onDelete={(item) => deleteMutation.mutate(item)} />)}</div>
       ) : (
         <EmptyState icon={FilePlus2} title="No documents yet" body="Upload a PDF to extract text and make it available to semantic search and chat." />
       )}

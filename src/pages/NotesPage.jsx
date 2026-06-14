@@ -5,7 +5,7 @@ import { FileUp, Plus, StickyNote } from "lucide-react";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
 import KnowledgeCard from "../components/KnowledgeCard";
-import { Input, Textarea } from "../components/Input";
+import NoteForm from "../components/NoteForm";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
@@ -104,20 +104,19 @@ export default function NotesPage() {
   });
   
   const updateMutation = useMutation({
-    mutationFn: (payload) => {
-      if (editingItem.type === "note") {
-        return updateNote(editingItem.id, payload);
-      } else if (editingItem.type === "document") {
-        return updateDocument(editingItem.id, payload, editingItem.extractedText);
+    mutationFn: ({ id, type, originalText, payload }) => {
+      if (type === "note") {
+        return updateNote(id, payload);
+      } else if (type === "document") {
+        return updateDocument(id, payload, originalText);
       }
     },
-    onMutate: async (payload) => {
-      const type = editingItem.type;
+    onMutate: async ({ type, id, payload }) => {
       await queryClient.cancelQueries({ queryKey: [type, user.uid] });
       const previousItems = queryClient.getQueryData([type, user.uid]);
       queryClient.setQueryData([type, user.uid], (current = []) =>
         current.map((item) =>
-          item.id === editingItem.id
+          item.id === id
             ? { ...item, ...payload, title: payload.title || payload.fileName, summary: "Updating AI summary..." }
             : item
         )
@@ -160,7 +159,7 @@ export default function NotesPage() {
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> New note</Button>
       </PageHeader>
       {open && <NoteForm loading={createMutation.isPending} onCancel={() => setOpen(false)} onSubmit={(payload) => createMutation.mutate(payload)} />}
-      {editingItem && <NoteForm initialData={editingItem} loading={updateMutation.isPending} onCancel={() => setEditingItem(null)} onSubmit={(payload) => updateMutation.mutate(payload)} />}
+      {editingItem && <NoteForm key={editingItem.id} initialData={editingItem} loading={updateMutation.isPending} onCancel={() => setEditingItem(null)} onSubmit={(payload) => updateMutation.mutate({ id: editingItem.id, type: editingItem.type, originalText: editingItem.extractedText, payload })} />}
       {hasLoadError && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {notesLoadError?.message || documentsLoadError?.message || "Could not load notes from the database."}
@@ -210,46 +209,5 @@ function NotesSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-function NoteForm({ initialData, onSubmit, onCancel, loading }) {
-  const isDocument = initialData?.type === "document";
-  const defaultTitle = initialData ? (initialData.title || initialData.fileName) : "";
-  const defaultTags = initialData?.tags ? initialData.tags.join(", ") : "";
-
-  const [payload, setPayload] = useState({ 
-    title: defaultTitle, 
-    category: initialData?.category || "", 
-    tags: defaultTags, 
-    content: initialData?.content || "" 
-  });
-
-  return (
-    <form
-      className="mb-6 rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const submittedTags = payload.tags.split(",").map((tag) => tag.trim()).filter(Boolean);
-        if (isDocument) {
-          onSubmit({ fileName: payload.title, category: payload.category, tags: submittedTags });
-        } else {
-          onSubmit({ ...payload, tags: submittedTags });
-        }
-      }}
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input label={isDocument ? "File Name" : "Title"} value={payload.title} onChange={(event) => setPayload({ ...payload, title: event.target.value })} required />
-        <Input label="Category" value={payload.category} onChange={(event) => setPayload({ ...payload, category: event.target.value })} />
-      </div>
-      <Input className="mt-4" label="Tags" placeholder="firebase, auth, product" value={payload.tags} onChange={(event) => setPayload({ ...payload, tags: event.target.value })} />
-      {!isDocument && (
-        <Textarea className="mt-4 min-h-52" label="Content" value={payload.content} onChange={(event) => setPayload({ ...payload, content: event.target.value })} required />
-      )}
-      <div className="mt-4 flex justify-end gap-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button loading={loading}>{initialData ? "Save changes" : "Save and summarize"}</Button>
-      </div>
-    </form>
   );
 }
