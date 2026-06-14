@@ -4,13 +4,12 @@ import toast from "react-hot-toast";
 import { FileUp, Plus, StickyNote } from "lucide-react";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import ManagedKnowledgeCard from "../components/ManagedKnowledgeCard";
+import KnowledgeGrid from "../components/KnowledgeGrid";
 import NoteForm from "../components/NoteForm";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useContent } from "../hooks/useKnowledge";
 import { saveNote } from "../services/contentService";
-import { saveDocument } from "../services/uploadService";
 
 export default function NotesPage() {
   const [open, setOpen] = useState(false);
@@ -52,7 +51,10 @@ export default function NotesPage() {
     },
   });
   const uploadMutation = useMutation({
-    mutationFn: (file) => saveDocument(user.uid, file, setProgress),
+    mutationFn: async (file) => {
+      const { saveDocument } = await import("../services/uploadService");
+      return saveDocument(user.uid, file, setProgress);
+    },
     onMutate: async (file) => {
       await queryClient.cancelQueries({ queryKey: ["document", user.uid] });
       const previousDocuments = queryClient.getQueryData(["document", user.uid]);
@@ -115,9 +117,7 @@ export default function NotesPage() {
       {isInitialLoading ? (
         <NotesSkeleton />
       ) : data.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((note) => <ManagedKnowledgeCard key={`${note.type}-${note.id}`} item={note} />)}
-        </div>
+        <KnowledgeGrid data={data} />
       ) : hasLoadError ? (
         <EmptyState icon={StickyNote} title="Could not load your notes" body="The database request failed. Check the error message above, then refresh after fixing Firebase rules or indexes." />
       ) : (

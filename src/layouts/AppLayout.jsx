@@ -57,15 +57,15 @@ export default function AppLayout() {
               Second Brain
             </button>
             <div className="hidden text-sm text-stone-500 dark:text-zinc-400 sm:block">{user?.displayName || "Second Brain User"}</div>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" className="h-10 w-10 px-0" onClick={toggleTheme} title="Toggle theme">
-                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button variant="secondary" className="h-12 w-12 px-0" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+                {theme === "light" ? <Moon className="h-7 w-7" /> : <Sun className="h-7 w-7" />}
               </Button>
-              <Button variant="secondary" className="h-10 w-10 px-0" onClick={() => navigate("/app/profile")} title="Profile">
-                <User className="h-5 w-5" />
+              <Button variant="secondary" className="h-12 w-12 px-0" onClick={() => navigate("/app/profile")} title="Profile" aria-label="Profile">
+                <User className="h-7 w-7" />
               </Button>
-              <Button variant="ghost" className="h-10 w-10 px-0 text-stone-600 dark:text-zinc-300" onClick={logout} title="Log out">
-                <LogOut className="h-5 w-5" />
+              <Button variant="ghost" className="h-12 w-12 px-0 text-stone-600 dark:text-zinc-300" onClick={logout} title="Log out" aria-label="Log out">
+                <LogOut className="h-7 w-7" />
               </Button>
             </div>
           </div>

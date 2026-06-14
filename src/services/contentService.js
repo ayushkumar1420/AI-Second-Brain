@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -106,19 +107,20 @@ export async function updateNote(noteId, payload) {
 }
 
 export async function updateDocument(documentId, payload, extractedText) {
-  const [summary, embedding] = await Promise.all([
-    summarizeContent({ title: payload.fileName, content: extractedText, type: "PDF" }),
-    generateEmbedding(`${payload.fileName}\n${extractedText}`),
-  ]);
+  void extractedText;
   await updateDoc(doc(db, "documents", documentId), {
     ...payload,
-    summary,
-    embedding,
     updatedAt: serverTimestamp(),
   });
 }
 
 export async function deleteContent(type, id) {
+  if (type === "document") {
+    const documentRef = doc(db, collections[type], id);
+    const snapshot = await getDoc(documentRef);
+    await deleteDoc(documentRef);
+    return snapshot.data();
+  }
   await deleteDoc(doc(db, collections[type], id));
 }
 

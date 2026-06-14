@@ -23,13 +23,13 @@ export default function KnowledgeCard({ item, onEdit, onDelete }) {
         </div>
         <div className="flex gap-1 shrink-0">
           {onEdit && (
-            <Button variant="ghost" className="h-9 w-9 px-0 text-stone-400 hover:text-ink dark:text-zinc-500 dark:hover:text-zinc-300" onClick={() => onEdit(item)} title="Edit">
-              <Edit2 className="h-4 w-4" />
+            <Button variant="ghost" className="h-10 w-10 px-0 text-stone-500 hover:text-ink dark:text-zinc-400 dark:hover:text-white" onClick={() => onEdit(item)} title="Edit">
+              <Edit2 className="h-5 w-5" />
             </Button>
           )}
           {onDelete && (
-            <Button variant="ghost" className="h-9 w-9 px-0 text-stone-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-500" onClick={() => onDelete(item)} title="Delete">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" className="h-10 w-10 px-0 text-stone-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-500" onClick={() => onDelete(item)} title="Delete">
+              <Trash2 className="h-5 w-5" />
             </Button>
           )}
         </div>
