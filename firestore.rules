@@ -1,26 +1,39 @@
 rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() {
+
+service cloud.firestore{
+  match /databases/{database}/documents{
+
+    function signedIn(){
       return request.auth != null;
     }
 
-    function ownsExisting() {
+    function ownsExisting(){
       return signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    function ownsIncoming() {
+    function ownsIncoming(){
       return signedIn() && request.resource.data.userId == request.auth.uid;
     }
 
-    match /users/{userId} {
+    function allowedCollection(collection){
+      return collection in ["notes", "documents", "links", "chats", "activities"];
+    }
+
+    match /users/{userId}{
       allow read, create, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
-    match /{collection}/{documentId} {
-      allow read, update, delete: if collection in ["notes", "documents", "links", "chats", "activities"] && ownsExisting();
-      allow create: if collection in ["notes", "documents", "links", "chats", "activities"] && ownsIncoming();
+    match /{collection}/{documentId}{
+      allow read: if allowedCollection(collection) && ownsExisting();
+
+      allow create: if allowedCollection(collection) && ownsIncoming();
+
+      allow update: if allowedCollection(collection)
+                    && ownsExisting()
+                    && ownsIncoming();
+
+      allow delete: if allowedCollection(collection) && ownsExisting();
     }
   }
 }
