@@ -3,33 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "preview": "npm --prefix frontend run preview"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.80.7",
-    "firebase": "^11.9.1",
-    "firebase-admin": "^14.5.0",
-    "lucide-react": "^0.468.0",
-    "pdfjs-dist": "^4.10.38",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.58.0",
-    "react-hot-toast": "^2.5.2",
-    "react-router-dom": "^6.30.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react-swc": "^4.3.1",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^8.57.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^4.6.2",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
-    "vite": "^8.0.16"
+    "firebase-admin": "^14.5.0"
   }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "ai-second-brain-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "api/gemini.js",
+  "dependencies": {
+    "firebase-admin": "^14.5.0"
+  }
+}
