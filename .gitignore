@@ -73,6 +73,13 @@ typings/
 .env
 .env.test
 .env*.local
+.env.*
+!.env.example
+!**/.env.example
+
+node_modules/
+dist/
+.vercel/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
