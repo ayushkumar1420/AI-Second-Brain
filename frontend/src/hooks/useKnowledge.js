@@ -20,7 +20,11 @@ function readLocalCache(userId, type) {
 function writeLocalCache(userId, type, data) {
   if (!userId) return;
   try {
-    const lightweightData = data.map(({ embedding, ...item }) => item);
+    const lightweightData = data.map((item) => {
+        const cached = { ...item };
+        delete cached.embedding;
+        return cached;
+    });
     window.localStorage.setItem(cacheKey(userId, type), JSON.stringify(lightweightData));
   } catch {
     // Firestore remains the source of truth.

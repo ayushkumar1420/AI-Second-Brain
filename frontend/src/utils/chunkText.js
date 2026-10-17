@@ -2,12 +2,13 @@
 export function chunkText(text, chunkSize = 1000, overlap = 150) {
   if (typeof text !== "string" || !text.trim()) return [];
 
-  if (chunkSize <= 0 || overlap < 0 || overlap >= chunkSize) {
+  if (!Number.isInteger(chunkSize) || !Number.isInteger(overlap) ||
+      chunkSize <= 0 || overlap < 0 || overlap >= chunkSize) {
     throw new Error("Invalid chunk size or overlap.");
   }
 
-  const chunks = [];
   const content = text.replace(/\s+/g, " ").trim();
+  const chunks = [];
 
   for (let start = 0; start < content.length;) {
     let end = Math.min(start + chunkSize, content.length);
@@ -25,4 +26,14 @@ export function chunkText(text, chunkSize = 1000, overlap = 150) {
   }
 
   return chunks;
+}
+
+export function chunkPdfPages(pages, chunkSize = 1000, overlap = 150) {
+  return pages.flatMap((page, pageIndex) =>
+    chunkText(page, chunkSize, overlap).map((content, index) => ({
+      pageNumber: pageIndex + 1,
+      chunkIndexOnPage: index,
+      content,
+    }))
+  );
 }

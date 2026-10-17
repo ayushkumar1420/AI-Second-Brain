@@ -1,30 +1,31 @@
+
 rules_version = '2';
 
-service cloud.firestore{
-  match /databases/{database}/documents{
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-    function signedIn(){
+    function signedIn() {
       return request.auth != null;
     }
 
-    function ownsExisting(){
+    function ownsExisting() {
       return signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    function ownsIncoming(){
+    function ownsIncoming() {
       return signedIn() && request.resource.data.userId == request.auth.uid;
     }
 
-    function allowedCollection(collection){
+    function allowedCollection(collection) {
       return collection in ["notes", "documents", "links", "chats", "activities"];
     }
 
-    match /users/{userId}{
+    match /users/{userId} {
       allow read, create, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
 
-    match /{collection}/{documentId}{
+    match /{collection}/{documentId} {
       allow read: if allowedCollection(collection) && ownsExisting();
 
       allow create: if allowedCollection(collection) && ownsIncoming();
@@ -34,6 +35,43 @@ service cloud.firestore{
                     && ownsIncoming();
 
       allow delete: if allowedCollection(collection) && ownsExisting();
+    }
+
+    // PDF chunks belong to an existing document.
+    match /documents/{documentId}/chunks/{chunkId} {
+
+      function ownsParent() {
+        return signedIn()
+          && get(/databases/$(database)/documents/documents/$(documentId)).data.userId == request.auth.uid;
+      }
+
+      function validChunk() {
+        return request.resource.data.keys().hasAll([
+          "userId", "documentId", "chunkIndex",
+          "pageNumber", "content", "embedding"
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.documentId == documentId
+        && request.resource.data.chunkIndex is int
+        && request.resource.data.chunkIndex >= 0
+        && request.resource.data.pageNumber is int
+        && request.resource.data.pageNumber >= 1
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1500
+        && request.resource.data.embedding is list
+        && request.resource.data.embedding.size() == 3072;
+      }
+
+      allow read, delete: if ownsParent();
+
+      allow create: if ownsParent() && validChunk();
+
+      allow update: if ownsParent()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.documentId == resource.data.documentId
+                    && validChunk();
     }
   }
 }
