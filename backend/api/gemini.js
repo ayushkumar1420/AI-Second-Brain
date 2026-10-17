@@ -1,3 +1,4 @@
+import "../local-env.js";
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
