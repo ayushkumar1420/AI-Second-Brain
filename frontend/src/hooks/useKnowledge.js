@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { listAllKnowledge, listContent } from "../services/contentService";
 import { useAuth } from "../context/AuthContext";
@@ -19,14 +20,16 @@ function readLocalCache(userId, type) {
 function writeLocalCache(userId, type, data) {
   if (!userId) return;
   try {
-    window.localStorage.setItem(cacheKey(userId, type), JSON.stringify(data));
+    const lightweightData = data.map(({ embedding, ...item }) => item);
+    window.localStorage.setItem(cacheKey(userId, type), JSON.stringify(lightweightData));
   } catch {
-    // Ignore storage quota/private mode failures. Firestore remains the source of truth.
+    // Firestore remains the source of truth.
   }
 }
 
 export function useContent(type) {
   const { user } = useAuth();
+
   return useQuery({
     queryKey: [type, user?.uid],
     queryFn: async () => {
@@ -36,11 +39,25 @@ export function useContent(type) {
     },
     placeholderData: () => readLocalCache(user?.uid, type),
     enabled: Boolean(user?.uid),
+
+    refetchInterval: (query) => {
+      const items = query.state.data;
+      if (!Array.isArray(items)) return false;
+
+      const isProcessing = items.some(
+        (item) => ["processing", "extracting"].includes(item.aiStatus)
+      );
+
+      return isProcessing ? 3000 : false;
+    },
+
+    refetchOnMount: "always",
   });
 }
 
 export function useKnowledge() {
   const { user } = useAuth();
+
   return useQuery({
     queryKey: ["knowledge", user?.uid],
     queryFn: () => listAllKnowledge(user.uid),
