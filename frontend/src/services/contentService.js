@@ -1,3 +1,4 @@
+
 import {
   addDoc,
   collection,
@@ -15,6 +16,7 @@ import { deleteObject, ref } from "firebase/storage";
 import { db, storage } from "../firebase/config";
 import { generateEmbedding, summarizeContent } from "./gemini";
 import { logActivity } from "./activityService";
+import { deletePdfChunks } from "./chunkService";
 import { toPlainText } from "../utils/vector";
 
 const collections = {
@@ -35,22 +37,44 @@ function timestampToMs(value) {
 }
 
 function sortNewestFirst(items) {
-  return [...items].sort((a, b) => timestampToMs(b.createdAt || b.uploadedAt || b.updatedAt) - timestampToMs(a.createdAt || a.uploadedAt || a.updatedAt));
+  return [...items].sort(
+    (a, b) =>
+      timestampToMs(b.createdAt || b.uploadedAt || b.updatedAt) -
+      timestampToMs(a.createdAt || a.uploadedAt || a.updatedAt)
+  );
 }
 
 function formatFirestoreError(error, type) {
   const code = error?.code || "";
-  if (code.includes("permission-denied")) return `Firestore denied loading ${type}s. Check firestore.rules and the signed-in user ID.`;
-  if (code.includes("failed-precondition")) return `Firestore needs an index or query change before loading ${type}s.`;
-  if (code.includes("unauthenticated")) return `You must be signed in before loading ${type}s.`;
+
+  if (code.includes("permission-denied")) {
+    return `Firestore denied loading ${type}s. Check firestore.rules and the signed-in user ID.`;
+  }
+
+  if (code.includes("failed-precondition")) {
+    return `Firestore needs an index or query change before loading ${type}s.`;
+  }
+
+  if (code.includes("unauthenticated")) {
+    return `You must be signed in before loading ${type}s.`;
+  }
+
   return error?.message || `Could not load ${type}s from Firestore.`;
 }
 
 export async function listContent(userId, type, take = 80) {
   try {
-    const q = query(collection(db, collections[type]), where("userId", "==", userId), limit(take));
+    const q = query(
+      collection(db, collections[type]),
+      where("userId", "==", userId),
+      limit(take)
+    );
+
     const snapshot = await getDocs(q);
-    return sortNewestFirst(snapshot.docs.map((item) => normalizeDoc(item, type)));
+
+    return sortNewestFirst(
+      snapshot.docs.map((item) => normalizeDoc(item, type))
+    );
   } catch (error) {
     throw new Error(formatFirestoreError(error, type));
   }
@@ -62,6 +86,7 @@ export async function listAllKnowledge(userId) {
     listContent(userId, "document", 80),
     listContent(userId, "link", 80),
   ]);
+
   return [...notes, ...documents, ...links].map((item) => ({
     ...item,
     content: item.content || item.extractedText || item.summary || "",
@@ -71,6 +96,7 @@ export async function listAllKnowledge(userId) {
 
 export async function saveNote(userId, payload) {
   const plain = toPlainText(payload.content);
+
   const document = await addDoc(collection(db, "notes"), {
     userId,
     title: payload.title,
@@ -80,21 +106,31 @@ export async function saveNote(userId, payload) {
     category: payload.category,
     embedding: [],
     aiStatus: "processing",
-    history: [{ content: payload.content, savedAt: new Date().toISOString() }],
+    history: [
+      { content: payload.content, savedAt: new Date().toISOString() },
+    ],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
   enrichNote(document.id, payload.title, plain).catch(() => {});
   await logActivity(userId, "Created note", payload.title);
+
   return document.id;
 }
 
 export async function updateNote(noteId, payload) {
   const plain = toPlainText(payload.content);
+
   const [summary, embedding] = await Promise.all([
-    summarizeContent({ title: payload.title, content: plain, type: "note" }),
+    summarizeContent({
+      title: payload.title,
+      content: plain,
+      type: "note",
+    }),
     generateEmbedding(`${payload.title}\n${plain}`),
   ]);
+
   await updateDoc(doc(db, "notes", noteId), {
     ...payload,
     summary,
@@ -105,6 +141,7 @@ export async function updateNote(noteId, payload) {
 
 export async function updateDocument(documentId, payload, extractedText) {
   void extractedText;
+
   await updateDoc(doc(db, "documents", documentId), {
     ...payload,
     updatedAt: serverTimestamp(),
@@ -115,26 +152,44 @@ export async function deleteContent(type, id) {
   if (type === "document") {
     const documentRef = doc(db, collections[type], id);
     const snapshot = await getDoc(documentRef);
+
+    if (!snapshot.exists()) {
+      throw new Error("Document not found or already deleted.");
+    }
+
+    // Delete child chunks before deleting the parent document.
+    await deletePdfChunks(id);
+
     await deleteDoc(documentRef);
+
     const fileUrl = snapshot.data()?.fileUrl;
+
     if (fileUrl) {
       try {
         await deleteObject(ref(storage, fileUrl));
-      } catch {
-        // Firestore is the source of truth; ignore stale or already-deleted Storage objects.
+      } catch (error) {
+        console.warn("PDF Storage cleanup failed:", error);
       }
     }
+
     return;
   }
+
   await deleteDoc(doc(db, collections[type], id));
 }
 
 export async function createLink(userId, payload) {
   const content = payload.content || `Saved URL: ${payload.url}`;
+
   const [summary, embedding] = await Promise.all([
-    summarizeContent({ title: payload.title || payload.url, content, type: "article" }),
+    summarizeContent({
+      title: payload.title || payload.url,
+      content,
+      type: "article",
+    }),
     generateEmbedding(`${payload.title}\n${payload.url}\n${content}`),
   ]);
+
   const document = await addDoc(collection(db, "links"), {
     userId,
     url: payload.url,
@@ -145,16 +200,23 @@ export async function createLink(userId, payload) {
     embedding,
     createdAt: serverTimestamp(),
   });
+
   await logActivity(userId, "Saved link", payload.url);
+
   return document.id;
 }
 
 async function enrichNote(noteId, title, plain) {
   try {
     const [summary, embedding] = await Promise.all([
-      summarizeContent({ title, content: plain, type: "note" }),
+      summarizeContent({
+        title,
+        content: plain,
+        type: "note",
+      }),
       generateEmbedding(`${title}\n${plain}`),
     ]);
+
     await updateDoc(doc(db, "notes", noteId), {
       summary,
       embedding,
