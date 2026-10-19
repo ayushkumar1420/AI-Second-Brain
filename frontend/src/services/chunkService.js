@@ -18,11 +18,15 @@ const EMBEDDING_DIMENSIONS = 3072;
 
 export async function deletePdfChunks(documentId) {
   const chunksRef = collection(db, "documents", documentId, "chunks");
+  let hasMore = true;
 
-  while (true) {
+  while (hasMore) {
     const snapshot = await getDocs(query(chunksRef, limit(100)));
 
-    if (snapshot.empty) return;
+    if (snapshot.empty) {
+      hasMore = false;
+      continue;
+    }
 
     for (const chunk of snapshot.docs) {
       await deleteDoc(chunk.ref);
