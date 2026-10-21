@@ -30,7 +30,10 @@ async function callGemini(action, input) {
 
 export async function generateEmbedding(text) {
   const data = await callGemini("embedding", text.slice(0, 6000));
-  return data.embedding || [];
+  const embedding = data.embedding || [];
+
+  console.log("Gemini embedding dimensions:", embedding.length);
+  return embedding;
 }
 
 export async function generateText(prompt) {
