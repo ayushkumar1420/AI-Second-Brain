@@ -13,8 +13,8 @@ export async function askKnowledgeBase(userId, question) {
   const documents = knowledge.filter((item) => item.type === "document");
   const otherKnowledge = knowledge.filter((item) =>
     item.type !== "document" ||
-    !item.chunkCount ||
-    item.aiStatus !== "ready"
+    (!item.indexVersion && !item.chunkCount &&
+      (!item.aiStatus || item.aiStatus === "ready"))
   );
 
   const pdfChunks = await listPdfChunks(documents);

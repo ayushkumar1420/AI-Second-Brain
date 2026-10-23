@@ -55,11 +55,20 @@ export async function listPdfChunks(documents, maxDocuments = 20) {
   for (const document of readyDocuments) {
     const chunksRef = collection(db, "documents", document.id, "chunks");
     const snapshot = await getDocs(chunksRef);
+    // A ready parent alone cannot make a partial or corrupt index retrievable.
+    if (snapshot.docs.length !== document.chunkCount) continue;
+    const valid = snapshot.docs.every((chunk) => {
+      const data = chunk.data();
+      return data.documentId === document.id &&
+        Number.isInteger(data.pageNumber) && data.pageNumber > 0 &&
+        typeof data.content === "string" && data.content.trim().length > 0 &&
+        Array.isArray(data.embedding) && data.embedding.length === 3072 &&
+        data.embedding.every((value) => typeof value === "number" && Number.isFinite(value));
+    });
+    if (!valid) continue;
 
     for (const chunk of snapshot.docs) {
       const data = chunk.data();
-
-      if (!Array.isArray(data.embedding) || !data.embedding.length) continue;
 
       results.push({
         id: document.id,

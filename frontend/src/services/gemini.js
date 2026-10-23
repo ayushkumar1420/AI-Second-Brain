@@ -30,9 +30,11 @@ async function callGemini(action, input) {
 
 export async function generateEmbedding(text) {
   const data = await callGemini("embedding", text.slice(0, 6000));
-  const embedding = data.embedding || [];
-
-  console.log("Gemini embedding dimensions:", embedding.length);
+  const embedding = data.embedding;
+  if (!Array.isArray(embedding) || embedding.length !== 3072 ||
+      !embedding.every((value) => typeof value === "number" && Number.isFinite(value))) {
+    throw new Error("AI provider returned an invalid embedding (expected 3072 finite numbers)");
+  }
   return embedding;
 }
 

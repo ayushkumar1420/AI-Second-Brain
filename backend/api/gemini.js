@@ -4,6 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 
 const GENERATE_MODEL = process.env.GEMINI_GENERATE_MODEL || "gemini-2.5-flash-lite";
 const EMBEDDING_MODEL = "gemini-embedding-2";
+const EMBEDDING_DIMENSIONS = 3072;
 
 function getAdminAuth() {
   if (!getApps().length) {
@@ -34,8 +35,9 @@ async function callGemini(path, body, apiKey) {
   });
 
   if (!response.ok) {
-    console.error("Gemini upstream error:", response.status);
-    throw new Error(`AI provider returned status ${response.status}`);
+    const error = new Error("AI provider rejected the request");
+    error.upstreamStatus = response.status;
+    throw error;
   }
 
   return response.json();
@@ -54,11 +56,19 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: "AI service is not configured" });
   }
 
+  let stage = "authentication";
   try {
     const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
     if (!token) return res.status(401).json({ error: "Authentication required" });
 
-    await getAdminAuth().verifyIdToken(token);
+    let adminAuth;
+    try {
+      adminAuth = getAdminAuth();
+    } catch {
+      console.error("AI configuration error: Firebase Admin initialization failed");
+      return res.status(503).json({ error: "Firebase Admin configuration is invalid" });
+    }
+    await adminAuth.verifyIdToken(token);
 
     const { action, input } = req.body || {};
 
@@ -67,6 +77,7 @@ export default async function handler(req, res) {
     }
 
     if (action === "embedding") {
+      stage = "embedding";
       const data = await callGemini(
         "embeddings",
         {
@@ -76,12 +87,16 @@ export default async function handler(req, res) {
         geminiApiKey
       );
 
-      return res.status(200).json({
-        embedding: data.data?.[0]?.embedding || [],
-      });
+      const embedding = data?.data?.[0]?.embedding;
+      if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSIONS ||
+          !embedding.every((value) => typeof value === "number" && Number.isFinite(value))) {
+        return res.status(502).json({ error: "AI provider returned an invalid embedding (expected 3072 finite numbers)" });
+      }
+      return res.status(200).json({ embedding });
     }
 
     if (action === "generate") {
+      stage = "generation";
       const data = await callGemini(
         "chat/completions",
         {
@@ -101,7 +116,7 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: "Unknown action" });
   } catch (error) {
-    if (error.code?.startsWith("auth/")) {
+    if (["auth/argument-error", "auth/invalid-argument", "auth/id-token-expired", "auth/invalid-id-token", "auth/id-token-revoked", "auth/user-disabled"].includes(error.code)) {
       return res.status(401).json({ error: "Invalid or expired session" });
     }
 
@@ -109,7 +124,16 @@ export default async function handler(req, res) {
       return res.status(504).json({ error: "AI request timed out" });
     }
 
-    console.error("AI request failed:", error.message);
-    return res.status(502).json({ error: "AI request failed" });
+    // Never log raw SDK/network messages: they may contain request credentials.
+    console.error("AI request failed:", { stage, upstreamStatus: error.upstreamStatus || null });
+    if (stage === "authentication") {
+      return res.status(503).json({ error: "Authentication service is unavailable" });
+    }
+    if (error.upstreamStatus) {
+      return res.status(error.upstreamStatus === 429 ? 429 : 502).json({
+        error: `AI provider rejected ${stage} request (HTTP ${error.upstreamStatus})`,
+      });
+    }
+    return res.status(502).json({ error: `AI ${stage} request failed (network or invalid provider response)` });
   }
 }

@@ -43,8 +43,8 @@ export default function SearchPage() {
 
       const regularItems = data.filter((item) =>
         item.type !== "document" ||
-        !item.chunkCount ||
-        item.aiStatus !== "ready"
+        (!item.indexVersion && !item.chunkCount &&
+          (!item.aiStatus || item.aiStatus === "ready"))
       );
 
       const ranked = rankByEmbedding(
